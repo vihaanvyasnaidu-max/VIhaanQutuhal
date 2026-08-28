@@ -18,6 +18,20 @@ BEFORE RUNNING
   model (~100MB) — this only happens once and needs internet the first time.
 """
 
+# Fixes a common crash on Apple Silicon Macs where two libraries the OCR
+# scanner depends on (torch and opencv) conflict over a shared component.
+# Must be set before those libraries are imported anywhere below.
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# Fixes "certificate verify failed" errors on macOS when downloading the
+# OCR model. Python.org installs of Python don't automatically trust the
+# Mac's certificates — this points Python at the certifi package's trusted
+# certificate list instead, so downloads work without extra setup.
+import certifi
+os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+os.environ.setdefault("SSL_CERT_DIR", os.path.dirname(certifi.where()))
+
 import streamlit as st
 import pandas as pd
 from gtts import gTTS
