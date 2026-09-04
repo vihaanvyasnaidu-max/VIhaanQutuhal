@@ -34,7 +34,9 @@ os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 os.environ.setdefault("SSL_CERT_DIR", os.path.dirname(certifi.where()))
 
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 import pandas as pd
+import datetime
 from gtts import gTTS
 import difflib
 import numpy as np
@@ -71,9 +73,9 @@ def play_chime():
 _CSS_TEMPLATE = """
 <style>
     html, body, [class*="css"]  { font-size: __BASE__px; }
-    h1 { font-size: __H1__px !important; color: #0F6E56; }
-    h2 { font-size: __H2__px !important; color: #0F6E56; }
-    h3 { font-size: __H3__px !important; }
+    h1 { font-size: __H1__px !important; color: #0F6E56; font-weight: 800 !important; }
+    h2 { font-size: __H2__px !important; color: #0F6E56; font-weight: 800 !important; }
+    h3 { font-size: __H3__px !important; font-weight: 700 !important; }
     .stButton > button {
         font-size: __BASE_PLUS2__px !important;
         padding: 18px 20px !important;
@@ -106,14 +108,14 @@ _CSS_TEMPLATE = """
     }
     .med-card {
         background-color: #E7F3F0;
-        border: 2px solid #0F6E56;
+        border: 0.5px solid #0F6E56;
         border-radius: 12px;
         padding: 16px 20px;
         margin-bottom: 14px;
     }
     .alt-card {
         background-color: #FBF2E3;
-        border: 2px solid #854F0B;
+        border: 0.5px solid #854F0B;
         border-radius: 12px;
         padding: 16px 20px;
         margin-bottom: 14px;
@@ -164,6 +166,8 @@ TRANSLATIONS = {
         "found_medicines": "Medicines found in your prescription",
         "no_medicines_found": "Couldn't clearly match any medicines. Try a clearer, well-lit photo.",
         "raw_text": "Text the app read from the photo",
+        "speech_reminder_named": "{user}, it is time to take {name}.", "meal_times_label": "Set your meal times (for automatic reminders)", "auto_reminder_note": "The app must stay open in this browser tab for automatic reminders to play — it cannot alert you if the tab or laptop is closed.",
+        "side_effects_note": "Shown in English only, to avoid the risk of a mistranslated medical warning.",
         "undo_button": "Undo", "edit_button": "✏️ Edit",
         "text_size_label": "Text size",
         "medicine_removed": "Removed.",
@@ -199,6 +203,8 @@ TRANSLATIONS = {
         "found_medicines": "पर्ची में मिली दवाइयां",
         "no_medicines_found": "कोई दवा साफ़ तौर पर नहीं मिली। एक साफ़, अच्छी रोशनी वाली फोटो लें।",
         "raw_text": "फोटो से पढ़ा गया टेक्स्ट",
+        "speech_reminder_named": "{user}, अब {name} लेने का समय है।", "meal_times_label": "अपने भोजन का समय सेट करें (स्वतः रिमाइंडर के लिए)", "auto_reminder_note": "स्वतः रिमाइंडर बजने के लिए ऐप इस ब्राउज़र टैब में खुला रहना चाहिए — टैब या लैपटॉप बंद होने पर यह सूचित नहीं कर सकता।",
+        "side_effects_note": "गलत अनुवाद से बचने के लिए इसे केवल अंग्रेज़ी में दिखाया गया है।",
         "undo_button": "पूर्ववत करें", "edit_button": "✏️ संपादित करें",
         "text_size_label": "टेक्स्ट का आकार",
         "medicine_removed": "हटा दिया गया।",
@@ -234,6 +240,8 @@ TRANSLATIONS = {
         "found_medicines": "மருந்துச்சீட்டில் கண்டறியப்பட்ட மருந்துகள்",
         "no_medicines_found": "எந்த மருந்தும் தெளிவாகக் கண்டறியப்படவில்லை.",
         "raw_text": "படத்திலிருந்து படிக்கப்பட்ட உரை",
+        "speech_reminder_named": "{user}, இப்போது {name} எடுக்க வேண்டிய நேரம்.", "meal_times_label": "உங்கள் உணவு நேரங்களை அமைக்கவும் (தானியங்கி நினைவூட்டலுக்கு)", "auto_reminder_note": "தானியங்கி நினைவூட்டல் ஒலிக்க, இந்த உலாவி டேப் திறந்திருக்க வேண்டும் — டேப் அல்லது லேப்டாப் மூடப்பட்டால் இது எச்சரிக்க முடியாது.",
+        "side_effects_note": "தவறான மொழிபெயர்ப்பு அபாயத்தைத் தவிர்க்க, இது ஆங்கிலத்தில் மட்டும் காட்டப்படுகிறது.",
         "undo_button": "செயல்தவிர்", "edit_button": "✏️ திருத்து",
         "text_size_label": "எழுத்துரு அளவு",
         "medicine_removed": "நீக்கப்பட்டது.",
@@ -269,6 +277,8 @@ TRANSLATIONS = {
         "found_medicines": "കുറിപ്പടിയിൽ കണ്ടെത്തിയ മരുന്നുകൾ",
         "no_medicines_found": "മരുന്നുകളൊന്നും വ്യക്തമായി കണ്ടെത്താനായില്ല. വ്യക്തമായ ഫോട്ടോ എടുക്കുക.",
         "raw_text": "ഫോട്ടോയിൽ നിന്ന് വായിച്ച ടെക്സ്റ്റ്",
+        "speech_reminder_named": "{user}, ഇപ്പോൾ {name} കഴിക്കേണ്ട സമയമാണ്.", "meal_times_label": "നിങ്ങളുടെ ഭക്ഷണ സമയങ്ങൾ സജ്ജമാക്കുക (സ്വയമേവയുള്ള ഓർമ്മപ്പെടുത്തലിന്)", "auto_reminder_note": "സ്വയമേവയുള്ള ഓർമ്മപ്പെടുത്തൽ പ്ലേ ചെയ്യാൻ ആപ്പ് ഈ ബ്രൗസർ ടാബിൽ തുറന്നിരിക്കണം — ടാബോ ലാപ്ടോപ്പോ അടച്ചാൽ ഇത് അറിയിക്കാൻ കഴിയില്ല.",
+        "side_effects_note": "തെറ്റായ വിവർത്തനത്തിന്റെ അപകടസാധ്യത ഒഴിവാക്കാൻ ഇത് ഇംഗ്ലീഷിൽ മാത്രം കാണിക്കുന്നു.",
         "undo_button": "പഴയപടിയാക്കുക", "edit_button": "✏️ എഡിറ്റ് ചെയ്യുക",
         "text_size_label": "ടെക്സ്റ്റ് വലുപ്പം",
         "medicine_removed": "നീക്കം ചെയ്തു.",
@@ -304,6 +314,8 @@ TRANSLATIONS = {
         "found_medicines": "প্রেসক্রিপশনে পাওয়া ওষুধ",
         "no_medicines_found": "কোনো ওষুধ স্পষ্টভাবে খুঁজে পাওয়া যায়নি। একটি স্পষ্ট, ভালো আলোর ছবি তুলুন।",
         "raw_text": "ছবি থেকে পড়া টেক্সট",
+        "speech_reminder_named": "{user}, এখন {name} খাওয়ার সময়।", "meal_times_label": "আপনার খাবারের সময় নির্ধারণ করুন (স্বয়ংক্রিয় রিমাইন্ডারের জন্য)", "auto_reminder_note": "স্বয়ংক্রিয় রিমাইন্ডার বাজানোর জন্য অ্যাপটি এই ব্রাউজার ট্যাবে খোলা থাকতে হবে — ট্যাব বা ল্যাপটপ বন্ধ থাকলে এটি সতর্ক করতে পারবে না।",
+        "side_effects_note": "ভুল অনুবাদের ঝুঁকি এড়াতে এটি শুধুমাত্র ইংরেজিতে দেখানো হয়েছে।",
         "undo_button": "পূর্বাবস্থায় ফেরান", "edit_button": "✏️ সম্পাদনা করুন",
         "text_size_label": "লেখার আকার",
         "medicine_removed": "সরানো হয়েছে।",
@@ -339,6 +351,8 @@ TRANSLATIONS = {
         "found_medicines": "نسخے میں ملنے والی دوائیں",
         "no_medicines_found": "کوئی دوا واضح طور پر نہیں ملی۔ صاف اور روشن تصویر لیں۔",
         "raw_text": "تصویر سے پڑھا گیا متن",
+        "speech_reminder_named": "{user}، اب {name} لینے کا وقت ہے۔", "meal_times_label": "اپنے کھانے کے اوقات مقرر کریں (خودکار یاد دہانی کے لیے)", "auto_reminder_note": "خودکار یاد دہانی چلنے کے لیے ایپ کو اس براؤزر ٹیب میں کھلا رہنا ضروری ہے — ٹیب یا لیپ ٹاپ بند ہونے پر یہ مطلع نہیں کر سکتی۔",
+        "side_effects_note": "غلط ترجمے کے خطرے سے بچنے کے لیے یہ صرف انگریزی میں دکھایا گیا ہے۔",
         "undo_button": "کالعدم کریں", "edit_button": "✏️ ترمیم کریں",
         "text_size_label": "تحریر کا سائز",
         "medicine_removed": "ہٹا دیا گیا۔",
@@ -374,6 +388,8 @@ TRANSLATIONS = {
         "found_medicines": "प्रेस्क्रिप्सनमा भेटिएका औषधिहरू",
         "no_medicines_found": "कुनै औषधि स्पष्ट रूपमा भेटिएन। स्पष्ट, राम्रो उज्यालो फोटो खिच्नुहोस्।",
         "raw_text": "फोटोबाट पढिएको पाठ",
+        "speech_reminder_named": "{user}, अहिले {name} लिने समय भयो।", "meal_times_label": "आफ्नो खानाको समय सेट गर्नुहोस् (स्वचालित रिमाइन्डरका लागि)", "auto_reminder_note": "स्वचालित रिमाइन्डर बज्नको लागि एप यो ब्राउजर ट्याबमा खुला रहनुपर्छ — ट्याब वा ल्यापटप बन्द भएमा यसले सूचित गर्न सक्दैन।",
+        "side_effects_note": "गलत अनुवादको जोखिम हटाउन यो अंग्रेजीमा मात्र देखाइएको छ।",
         "undo_button": "पूर्ववत गर्नुहोस्", "edit_button": "✏️ सम्पादन गर्नुहोस्",
         "text_size_label": "टेक्स्ट साइज",
         "medicine_removed": "हटाइयो।",
@@ -409,6 +425,8 @@ TRANSLATIONS = {
         "found_medicines": "M\u00e9dicaments trouv\u00e9s dans votre ordonnance",
         "no_medicines_found": "Impossible de trouver clairement des m\u00e9dicaments. Essayez une photo plus claire et bien \u00e9clair\u00e9e.",
         "raw_text": "Texte lu par l'application depuis la photo",
+        "speech_reminder_named": "{user}, il est temps de prendre {name}.", "meal_times_label": "Définissez vos horaires de repas (pour les rappels automatiques)", "auto_reminder_note": "L'application doit rester ouverte dans cet onglet pour que les rappels automatiques fonctionnent — elle ne peut pas vous alerter si l'onglet ou l'ordinateur est fermé.",
+        "side_effects_note": "Affiché uniquement en anglais, pour éviter le risque d'une mauvaise traduction médicale.",
         "undo_button": "Annuler", "edit_button": "✏️ Modifier",
         "text_size_label": "Taille du texte",
         "medicine_removed": "Supprimé.",
@@ -528,12 +546,14 @@ def show_medicine_card(row, key_prefix):
             speak(t("speech_medicine").format(name=row['name'], composition=row['short_composition1'], price=f"{row['price']:.0f}"))
 
     if pd.notna(row.get("Consolidated_Side_Effects")):
-        with st.expander(t("side_effects")):
-            st.write(row["Consolidated_Side_Effects"])
+        st.markdown(f"**{t('side_effects')}**")
+        if st.session_state.lang != "English":
+            st.caption(t("side_effects_note"))
+        st.write(row["Consolidated_Side_Effects"])
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.write(f"**{t('alternatives_title')}**")
+    st.subheader(t('alternatives_title'))
     found_any = False
     for alt_col, price_col in ALT_PAIRS:
         alt_name = row.get(alt_col)
@@ -578,10 +598,28 @@ if not st.session_state.logged_in:
     st.title("💊 Med Amicus")
     st.write("Please enter your details to continue.")
 
+    if "meal_times" not in st.session_state:
+        st.session_state.meal_times = {
+            "Breakfast": datetime.time(8, 0),
+            "Lunch": datetime.time(13, 0),
+            "Dinner": datetime.time(20, 0),
+        }
+
     with st.form("login_form"):
         name_input = st.text_input("Full name")
         phone_input = st.text_input("Phone number")
         email_input = st.text_input("Email address")
+
+        st.write("**Your meal times** (used for automatic reminders)")
+        col_b, col_l, col_d = st.columns(3)
+        with col_b:
+            breakfast_input = st.time_input("Breakfast", value=st.session_state.meal_times["Breakfast"])
+        with col_l:
+            lunch_input = st.time_input("Lunch", value=st.session_state.meal_times["Lunch"])
+        with col_d:
+            dinner_input = st.time_input("Dinner", value=st.session_state.meal_times["Dinner"])
+        st.caption("The app must stay open in this browser tab for automatic reminders to play — it cannot alert you if the tab or laptop is closed.")
+
         submitted = st.form_submit_button("Continue", use_container_width=True)
 
     if submitted:
@@ -604,6 +642,11 @@ if not st.session_state.logged_in:
             st.session_state.user_name = name_clean
             st.session_state.user_phone = phone_clean
             st.session_state.user_email = email_clean
+            st.session_state.meal_times = {
+                "Breakfast": breakfast_input,
+                "Lunch": lunch_input,
+                "Dinner": dinner_input,
+            }
             st.rerun()
 
     st.stop()
@@ -692,6 +735,37 @@ with tab_home:
             st.session_state.show_scan_form = not st.session_state.show_scan_form
             st.session_state.show_add_form = False
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---- Meal-time settings — these are set once, on the login page, not here ----
+    if "meal_times" not in st.session_state:
+        st.session_state.meal_times = {
+            "Breakfast": datetime.time(8, 0),
+            "Lunch": datetime.time(13, 0),
+            "Dinner": datetime.time(20, 0),
+        }
+    if "announced_today" not in st.session_state:
+        st.session_state.announced_today = set()
+
+    # Re-run this page automatically every 30 seconds so the time check below
+    # actually gets a chance to fire without anyone touching the app.
+    st_autorefresh(interval=30_000, key="reminder_autorefresh")
+
+    now_dt = datetime.datetime.now()
+    today_str = now_dt.date().isoformat()
+    for m in st.session_state.my_medicines:
+        meal_time = st.session_state.meal_times.get(m["time"])
+        if meal_time is None:
+            continue
+        seconds_since_meal_time = (now_dt - now_dt.replace(
+            hour=meal_time.hour, minute=meal_time.minute, second=0, microsecond=0
+        )).total_seconds()
+        announce_key = (m["name"], m["time"], today_str)
+        # Fire once, in the first couple of minutes after the set meal time —
+        # wide enough that a 30-second refresh cycle won't miss it, but not
+        # so wide it announces something from hours ago.
+        if 0 <= seconds_since_meal_time <= 150 and announce_key not in st.session_state.announced_today:
+            speak(t("speech_reminder_named").format(user=first_name, name=m["name"]))
+            st.session_state.announced_today.add(announce_key)
 
     # ---- Undo bar — shows right after a removal, until dismissed or replaced ----
     if st.session_state.last_removed is not None:
